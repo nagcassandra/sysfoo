@@ -16,10 +16,21 @@ pipeline {
     }
 
     stage('package') {
-      steps {
-        echo 'generating artifacts.....'
-        sh 'mvn package -DskipTests'
-        archiveArtifacts 'target/*.war'
+      parallel {
+        stage('package') {
+          steps {
+            echo 'generating artifacts.....'
+            sh 'mvn package -DskipTests'
+            archiveArtifacts 'target/*.war'
+          }
+        }
+
+        stage('Sleep-Step') {
+          steps {
+            sleep 5
+          }
+        }
+
       }
     }
 
