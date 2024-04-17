@@ -1,80 +1,54 @@
 pipeline {
-  agent none
-  stages {
-    stage('build') {
-      agent {
-        docker {
-          image 'maven:3.6.3-jdk-11-slim'
-        }
-
-      }
-      steps {
-        echo 'Compiling teh code.....'
-        sh 'mvn compile'
-      }
-    }
-
-    stage('test') {
-      agent {
-        docker {
-          image 'maven:3.6.3-jdk-11-slim'
-        }
-
-      }
-      steps {
-        echo 'running unit tests.....'
-        sh 'mvn clean test'
-      }
-    }
-
-    stage('package') {
-      parallel {
-        stage('package') {
-          agent {
-            docker {
-              image 'maven:3.6.3-jdk-11-slim'
+    agent any
+    
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Compiling the code...'
+                sh 'mvn compile'
             }
-
-          }
-          steps {
-            echo 'generating artifacts.....'
-            sh 'mvn package -DskipTests'
-            archiveArtifacts 'target/*.war'
-          }
         }
-
-        stage('Sleep-Step') {
-          steps {
-            sleep 5
-          }
+        
+        stage('Test') {
+            steps {
+                echo 'Running unit tests...'
+                sh 'mvn clean test'
+            }
         }
-
-      }
-    }
-
-    stage('Docker BnP') {
-      agent any
-      steps {
-        script {
-          docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
-            def dockerImage = docker.build("nagendra30/sysfoo:v${env.BUILD_ID}", "./")
-            dockerImage.push()
-            dockerImage.push("latest")
-            dockerImage.push("dev")
-          }
+        
+        stage('Package') {
+            when {
+                expression {
+                    return env.BRANCH_NAME == 'master'
+                }
+            }
+            steps {
+                echo 'Generating artifacts...'
+                sh 'mvn package -DskipTests'
+                archiveArtifacts 'target/*.war'
+            }
         }
-
-      }
+        
+        stage('Docker BnP') {
+            when {
+                expression {
+                    return env.BRANCH_NAME == 'master'
+                }
+            }
+            steps {
+                echo 'Building and publishing Docker images...'
+                // Add your Docker build and push steps here
+            }
+        }
     }
-
-  }
-  tools {
-    maven 'Maven 3.6.3'
-  }
-  post {
-    always {
-      echo 'This pipeline is completed..'
+    
+    tools {
+        maven 'Maven 3.6.3'
     }
-
-  }
+    
+    post {
+        always {
+            echo 'This pipeline is completed.'
+        }
+    }
 }
